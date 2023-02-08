@@ -59,15 +59,16 @@ object ShownotesGen {
             val cardId = (card \ "id").values.asInstanceOf[String]
             val name = (card \ "name").values.asInstanceOf[String]
             val desc = (card \ "desc").values.asInstanceOf[String]
+            val urlList = UrlUtils.extractUrls(desc).distinct
 
             getTimestampOfThemeStartedEvent(cardId) match {
               case Some(startedDiscussionAtMs) =>
                 val startedRecordingAtMs = getTimestampOfRecordingStartedEvent(manualStartTimeOpt)
                 val relativeStartStr = getHumanReadableTimestamp(startedRecordingAtMs, startedDiscussionAtMs)
 
-                Theme(name, UrlUtils.extractUrls(desc), relativeStartStr, startedDiscussionAtMs)
+                Theme(name, urlList, relativeStartStr, startedDiscussionAtMs)
               case None =>
-                Theme(name, UrlUtils.extractUrls(desc), "TIMESTAMP_IS_MISSING", 0)
+                Theme(name, urlList, "TIMESTAMP_IS_MISSING", 0)
             }
 
           }.sortWith((t1, t2) => t1.relativeStartMs <= t2.relativeStartMs)
