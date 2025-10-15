@@ -8,5 +8,6 @@ FROM eclipse-temurin:11 AS app
 RUN mkdir -p /shownotegen
 COPY --from=builder /app/target/universal/stage /shownotegen/
 WORKDIR /shownotegen
-ENV JAVA_OPTS="-Xms128m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseContainerSupport"
+ENV JAVA_OPTS="-Xms128m -XX:+UseContainerSupport -XX:MaxRAMPercentage=60.0 -XX:+UseContainerSupport"
+ENV JVM_OPTS="-Xms128m -XX:+UseContainerSupport -XX:MaxRAMPercentage=60.0 -XX:+UseContainerSupport"
 ENTRYPOINT bin/devzen-shownote-generator
