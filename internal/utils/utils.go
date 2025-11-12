@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -47,7 +48,12 @@ func TitleOf(url string) string {
 
 	matches := titleRegex.FindSubmatch(body)
 	if len(matches) > 1 {
-		return html.EscapeString(string(matches[1]))
+		title := string(matches[1])
+		// Remove newlines and excessive whitespace
+		title = strings.ReplaceAll(title, "\n", " ")
+		title = strings.ReplaceAll(title, "\r", " ")
+		title = strings.TrimSpace(title)
+		return html.EscapeString(title)
 	}
 
 	return url
