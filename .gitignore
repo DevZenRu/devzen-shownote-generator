@@ -16,3 +16,12 @@ project/plugins/project/
 *.iws
 /out/
 .idea_modules/
+
+# Go
+devzen-shownote-generator
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+go.sum
