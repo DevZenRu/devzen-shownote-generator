@@ -89,8 +89,8 @@ func (h *Handler) HandleTrelloHook(w http.ResponseWriter, r *http.Request) {
 
 	log.Println(string(body))
 
-	// Parse webhook event
-	var event map[string]interface{}
+	// Parse webhook event using struct
+	var event TrelloWebhookEvent
 	if err := json.Unmarshal(body, &event); err != nil {
 		log.Printf("Error parsing webhook JSON: %v", err)
 		w.WriteHeader(http.StatusOK)
@@ -98,34 +98,16 @@ func (h *Handler) HandleTrelloHook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if it's an updateCard action
-	action, ok := event["action"].(map[string]interface{})
-	if !ok {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
-	actionType, ok := action["type"].(string)
-	if !ok || actionType != "updateCard" {
+	if event.Action.Type != "updateCard" {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
 	// Check if card moved to "In Discussion"
-	data, ok := action["data"].(map[string]interface{})
-	if !ok {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
-	listBefore, _ := data["listBefore"].(map[string]interface{})
-	listAfter, _ := data["listAfter"].(map[string]interface{})
-	listBeforeID, _ := listBefore["id"].(string)
-	listAfterID, _ := listAfter["id"].(string)
-
-	if listBeforeID == h.cfg.TrelloToDiscussListID && listAfterID == h.cfg.TrelloInDiscussionListID {
-		card, _ := data["card"].(map[string]interface{})
-		title, _ := card["name"].(string)
-		cardID, _ := card["id"].(string)
+	data := event.Action.Data
+	if data.ListBefore.ID == h.cfg.TrelloToDiscussListID && data.ListAfter.ID == h.cfg.TrelloInDiscussionListID {
+		title := data.Card.Name
+		cardID := data.Card.ID
 
 		urls, err := h.getThemeURLsByCardID(cardID)
 		if err != nil {
@@ -150,14 +132,9 @@ func (h *Handler) generateShownotes(manualStartMs int64) ([]Theme, error) {
 			"card_fields": "name,desc",
 		})
 
-	var response map[string]interface{}
+	var response TrelloListResponse
 	if err := h.fetchJSON(discussedURL, &response); err != nil {
 		return nil, fmt.Errorf("failed to fetch discussed cards: %w", err)
-	}
-
-	cards, ok := response["cards"].([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("invalid response format: cards not found")
 	}
 
 	// Get recording start time
@@ -168,25 +145,16 @@ func (h *Handler) generateShownotes(manualStartMs int64) ([]Theme, error) {
 
 	// Process each card
 	var themes []Theme
-	for _, cardData := range cards {
-		card, ok := cardData.(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		cardID, _ := card["id"].(string)
-		name, _ := card["name"].(string)
-		desc, _ := card["desc"].(string)
-
-		urls := utils.ExtractURLs(desc)
+	for _, card := range response.Cards {
+		urls := utils.ExtractURLs(card.Desc)
 		urls = utils.UniqueStrings(urls)
 
 		// Get timestamp when theme started
-		themeStartMs, err := h.getTimestampOfThemeStartedEvent(cardID)
+		themeStartMs, err := h.getTimestampOfThemeStartedEvent(card.ID)
 		if err != nil {
 			log.Printf("WARN - %v", err)
 			themes = append(themes, Theme{
-				Title:             name,
+				Title:             card.Name,
 				URLs:              urls,
 				ReadableStartTime: "TIMESTAMP_IS_MISSING",
 				RelativeStartMs:   0,
@@ -196,7 +164,7 @@ func (h *Handler) generateShownotes(manualStartMs int64) ([]Theme, error) {
 
 		relativeStartStr := utils.FormatDuration(recordingStartMs, themeStartMs)
 		themes = append(themes, Theme{
-			Title:             name,
+			Title:             card.Name,
 			URLs:              urls,
 			ReadableStartTime: relativeStartStr,
 			RelativeStartMs:   themeStartMs,
@@ -218,17 +186,12 @@ func (h *Handler) getTimestampOfRecordingStartedEvent(manualStartMs int64) (int6
 	}
 
 	cardURL := h.buildTrelloURL(fmt.Sprintf("/1/cards/%s", h.cfg.TrelloRecordingStartedCardID), nil)
-	var card map[string]interface{}
+	var card TrelloCard
 	if err := h.fetchJSON(cardURL, &card); err != nil {
 		return 0, fmt.Errorf("failed to fetch recording card: %w", err)
 	}
 
-	dateStr, ok := card["dateLastActivity"].(string)
-	if !ok {
-		return 0, fmt.Errorf("dateLastActivity not found in recording card")
-	}
-
-	t, err := time.Parse(time.RFC3339, dateStr)
+	t, err := time.Parse(time.RFC3339, card.DateLastActivity)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse date: %w", err)
 	}
@@ -239,39 +202,22 @@ func (h *Handler) getTimestampOfRecordingStartedEvent(manualStartMs int64) (int6
 // getTimestampOfThemeStartedEvent gets the timestamp when a card moved to "In Discussion"
 func (h *Handler) getTimestampOfThemeStartedEvent(cardID string) (int64, error) {
 	actionsURL := h.buildTrelloURL(fmt.Sprintf("/1/cards/%s/actions", cardID), nil)
-	var actions []interface{}
+	var actions []TrelloAction
 	if err := h.fetchJSON(actionsURL, &actions); err != nil {
 		return 0, fmt.Errorf("failed to fetch card actions: %w", err)
 	}
 
 	var possibleTimestamps []int64
-	for _, actionData := range actions {
-		action, ok := actionData.(map[string]interface{})
-		if !ok {
+	for _, action := range actions {
+		if action.Type != "updateCard" {
 			continue
 		}
-
-		actionType, _ := action["type"].(string)
-		if actionType != "updateCard" {
-			continue
-		}
-
-		data, ok := action["data"].(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		listAfter, _ := data["listAfter"].(map[string]interface{})
-		listBefore, _ := data["listBefore"].(map[string]interface{})
-		listAfterID, _ := listAfter["id"].(string)
-		listBeforeID, _ := listBefore["id"].(string)
 
 		// Check if moved from "To Discuss" or "Backlog" to "In Discussion"
-		if (listBeforeID == h.cfg.TrelloToDiscussListID && listAfterID == h.cfg.TrelloInDiscussionListID) ||
-			(listBeforeID == h.cfg.TrelloBacklogListID && listAfterID == h.cfg.TrelloInDiscussionListID) {
+		if (action.Data.ListBefore.ID == h.cfg.TrelloToDiscussListID && action.Data.ListAfter.ID == h.cfg.TrelloInDiscussionListID) ||
+			(action.Data.ListBefore.ID == h.cfg.TrelloBacklogListID && action.Data.ListAfter.ID == h.cfg.TrelloInDiscussionListID) {
 
-			dateStr, _ := action["date"].(string)
-			t, err := time.Parse(time.RFC3339, dateStr)
+			t, err := time.Parse(time.RFC3339, action.Date)
 			if err != nil {
 				continue
 			}
