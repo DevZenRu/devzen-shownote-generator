@@ -55,3 +55,56 @@ func TestFormatDuration(t *testing.T) {
 		t.Errorf("Expected %s, got %s", expected, result)
 	}
 }
+
+func TestRemoveHTMLEntities(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "ndash entity",
+			input:    "Test &ndash; value",
+			expected: "Test - value",
+		},
+		{
+			name:     "mdash entity",
+			input:    "Test &mdash; value",
+			expected: "Test - value",
+		},
+		{
+			name:     "hellip entity",
+			input:    "Test&hellip;",
+			expected: "Test...",
+		},
+		{
+			name:     "nbsp entity",
+			input:    "Test&nbsp;value",
+			expected: "Test value",
+		},
+		{
+			name:     "quote entities",
+			input:    "&ldquo;Test&rdquo; and &lsquo;value&rsquo;",
+			expected: "\"Test\" and 'value'",
+		},
+		{
+			name:     "multiple entities",
+			input:    "Language Models &amp; Agentic AI &mdash; Course",
+			expected: "Language Models &amp; Agentic AI - Course",
+		},
+		{
+			name:     "no entities",
+			input:    "Test value",
+			expected: "Test value",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := removeHTMLEntities(tt.input)
+			if result != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}

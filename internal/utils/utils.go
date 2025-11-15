@@ -53,10 +53,26 @@ func TitleOf(url string) string {
 		title = strings.ReplaceAll(title, "\n", " ")
 		title = strings.ReplaceAll(title, "\r", " ")
 		title = strings.TrimSpace(title)
-		return html.EscapeString(title)
+		title = html.EscapeString(title)
+		// Remove HTML entities that break RSS feeds
+		title = removeHTMLEntities(title)
+		return title
 	}
 
 	return url
+}
+
+// removeHTMLEntities removes HTML entities that break RSS feeds
+func removeHTMLEntities(s string) string {
+	s = strings.ReplaceAll(s, "&ndash;", "-")
+	s = strings.ReplaceAll(s, "&mdash;", "-")
+	s = strings.ReplaceAll(s, "&hellip;", "...")
+	s = strings.ReplaceAll(s, "&nbsp;", " ")
+	s = strings.ReplaceAll(s, "&rsquo;", "'")
+	s = strings.ReplaceAll(s, "&lsquo;", "'")
+	s = strings.ReplaceAll(s, "&rdquo;", "\"")
+	s = strings.ReplaceAll(s, "&ldquo;", "\"")
+	return s
 }
 
 // FormatDuration formats milliseconds duration as HH:mm:ss
