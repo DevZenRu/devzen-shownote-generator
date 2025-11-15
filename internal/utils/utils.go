@@ -53,8 +53,11 @@ func TitleOf(url string) string {
 		title = strings.ReplaceAll(title, "\n", " ")
 		title = strings.ReplaceAll(title, "\r", " ")
 		title = strings.TrimSpace(title)
+		// Unescape HTML entities first (they may be present in the original title tag)
+		title = html.UnescapeString(title)
+		// Then escape for safe HTML output
 		title = html.EscapeString(title)
-		// Remove HTML entities that break RSS feeds
+		// Finally remove problematic entities that break RSS feeds
 		title = removeHTMLEntities(title)
 		return title
 	}
@@ -70,8 +73,17 @@ func removeHTMLEntities(s string) string {
 	s = strings.ReplaceAll(s, "&nbsp;", " ")
 	s = strings.ReplaceAll(s, "&rsquo;", "'")
 	s = strings.ReplaceAll(s, "&lsquo;", "'")
-	s = strings.ReplaceAll(s, "&rdquo;", "\"")
-	s = strings.ReplaceAll(s, "&ldquo;", "\"")
+	s = strings.ReplaceAll(s, "&rdquo;", `"`)
+	s = strings.ReplaceAll(s, "&ldquo;", `"`)
+	// Also replace the actual unicode characters
+	s = strings.ReplaceAll(s, "\u2014", "-")   // em dash —
+	s = strings.ReplaceAll(s, "\u2013", "-")   // en dash –
+	s = strings.ReplaceAll(s, "\u2026", "...") // ellipsis …
+	s = strings.ReplaceAll(s, "\u00a0", " ")   // non-breaking space
+	s = strings.ReplaceAll(s, "\u2019", "'")   // right single quote '
+	s = strings.ReplaceAll(s, "\u2018", "'")   // left single quote '
+	s = strings.ReplaceAll(s, "\u201d", `"`)   // right double quote "
+	s = strings.ReplaceAll(s, "\u201c", `"`)   // left double quote "
 	return s
 }
 

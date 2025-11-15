@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -106,5 +107,27 @@ func TestRemoveHTMLEntities(t *testing.T) {
 				t.Errorf("Expected %q, got %q", tt.expected, result)
 			}
 		})
+	}
+}
+
+func TestTitleOfWithMeridianURL(t *testing.T) {
+	url := "https://www.meridiancambridge.org/language-models-course"
+	title := TitleOf(url)
+
+	t.Logf("Title: %q", title)
+
+	// Check that mdash entity is not present
+	if strings.Contains(title, "&mdash;") {
+		t.Errorf("Title contains &mdash; entity: %s", title)
+	}
+
+	// Check that ndash entity is not present
+	if strings.Contains(title, "&ndash;") {
+		t.Errorf("Title contains &ndash; entity: %s", title)
+	}
+
+	// Should contain a regular dash instead
+	if !strings.Contains(title, "-") && !strings.Contains(title, "—") {
+		t.Logf("Warning: Title doesn't contain dash or em-dash character")
 	}
 }
