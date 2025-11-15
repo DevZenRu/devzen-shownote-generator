@@ -257,13 +257,13 @@ func (h *Handler) generateHTML(themes []Theme) string {
 		case 0:
 			sb.WriteString(fmt.Sprintf("%s</li>\n", escapedTitle))
 		case 1:
-			sb.WriteString(fmt.Sprintf(`<a href="%s">%s</a></li>\n`, theme.URLs[0], escapedTitle))
+			sb.WriteString(fmt.Sprintf("<a href=\"%s\">%s</a></li>\n", theme.URLs[0], escapedTitle))
 		default:
 			sb.WriteString(escapedTitle + "\n")
 			sb.WriteString("<ul>\n")
 			for _, url := range theme.URLs {
 				urlTitle := utils.TitleOf(url)
-				sb.WriteString(fmt.Sprintf(`<li><a href="%s">%s</a></li>\n`, url, urlTitle))
+				sb.WriteString(fmt.Sprintf("<li><a href=\"%s\">%s</a></li>\n", url, urlTitle))
 			}
 			sb.WriteString("</ul>\n")
 			sb.WriteString("</li>\n")

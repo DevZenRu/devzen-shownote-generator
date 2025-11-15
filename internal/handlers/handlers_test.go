@@ -1,10 +1,44 @@
 package handlers
 
 import (
+	"bytes"
 	"net/url"
 	"strings"
 	"testing"
 )
+
+func TestGenerateHTMLWithMultipleURLsHasRealNewlines(t *testing.T) {
+	h := &Handler{}
+	themes := []Theme{
+		{
+			Title:             "Test Theme",
+			URLs:              []string{"https://example.com/1", "https://example.com/2"},
+			ReadableStartTime: "00:10:00",
+			RelativeStartMs:   600000,
+		},
+	}
+
+	html := h.generateHTML(themes)
+
+	// Check that we have actual newline bytes (0x0a), not literal \n
+	if strings.Contains(html, "\\n") {
+		t.Errorf("HTML contains literal \\n instead of actual newlines")
+	}
+
+	// Verify actual newline bytes exist
+	if !bytes.Contains([]byte(html), []byte{0x0a}) {
+		t.Errorf("HTML should contain actual newline bytes")
+	}
+
+	// Count actual newlines
+	newlineCount := strings.Count(html, "\n")
+	if newlineCount < 5 {
+		t.Errorf("Expected at least 5 newlines, got %d", newlineCount)
+	}
+
+	t.Logf("HTML output:\n%s", html)
+	t.Logf("HTML bytes: %q", html)
+}
 
 func TestBuildTelegramURL(t *testing.T) {
 	message := `Книжный Клуб. Глава 4 книги "The Manager's Path". В этот раз кратко.
