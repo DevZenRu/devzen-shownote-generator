@@ -1,11 +1,17 @@
 # syntax=docker/dockerfile:1
 
-FROM sbtscala/scala-sbt:eclipse-temurin-11.0.16_1.8.0_2.12.17 AS builder
-ADD . /app/
-RUN cd /app && sbt compile stage
+# Build stage
+FROM golang:1.25-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum* ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /devzen-shownote-generator ./cmd/server
 
-FROM eclipse-temurin:11 AS app
-RUN mkdir -p /shownotegen
-COPY --from=builder /app/target/universal/stage /shownotegen/
-WORKDIR /shownotegen
-ENTRYPOINT bin/devzen-shownote-generator
+# Runtime stage
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+COPY --from=builder /devzen-shownote-generator .
+EXPOSE 9025
+CMD ["./devzen-shownote-generator"]
