@@ -146,8 +146,7 @@ func (h *Handler) generateShownotes(manualStartMs int64) ([]Theme, error) {
 	// Process each card
 	var themes []Theme
 	for _, card := range response.Cards {
-		urls := utils.ExtractURLs(card.Desc)
-		urls = utils.UniqueStrings(urls)
+		urls := utils.ExtractURLsUnique(card.Desc)
 
 		// Get timestamp when theme started
 		themeStartMs, err := h.getTimestampOfThemeStartedEvent(card.ID)

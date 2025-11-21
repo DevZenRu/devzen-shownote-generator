@@ -25,6 +25,10 @@ func ExtractURLs(text string) []string {
 	return urlRegex.FindAllString(text, -1)
 }
 
+func ExtractURLsUnique(text string) []string {
+	return UniqueStrings(ExtractURLs(text))
+}
+
 // TitleOf fetches the HTML title from the given URL
 // Returns the URL itself if fetching fails or no title is found
 // Limits download to 10MB and uses 10s timeout

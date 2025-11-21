@@ -99,7 +99,7 @@ func (h *Handler) getThemeURLsByCardID(cardID string) ([]string, error) {
 		return nil, err
 	}
 
-	return utils.ExtractURLs(card.Desc), nil
+	return utils.ExtractURLsUnique(card.Desc), nil
 }
 
 // postMessageToTelegram sends a message to the Telegram channel
